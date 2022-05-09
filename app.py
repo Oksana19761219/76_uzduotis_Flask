@@ -8,6 +8,8 @@ from flask_login import LoginManager, UserMixin, current_user, logout_user, logi
 import secrets
 from PIL import Image
 import forms
+from flask_mail import Message, Mail
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 
@@ -17,6 +19,7 @@ app.config['SECRET_KEY'] = '8752e4durtxkseoem73s4ayr'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'library.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
 
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
@@ -32,6 +35,20 @@ class User(db.Model, UserMixin):
     email = db.Column('email', db.String(120), unique=True, nullable=False)
     image = db.Column(db.String(50), nullable=False, default='default.jpg')
     password = db.Column('password', db.String(50), unique=True, nullable=False)
+
+    def get_reset_token(self, expires_sec=1800):
+        s = Serializer(app.config['SECRET_KEY'], expires_sec)
+        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+    @staticmethod
+    def verify_reset_token(token):
+        s = Serializer(app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(token)['user_id']
+        except:
+            return None
+        return User.query.get(user_id)
+
 
 class Bibliography(db.Model):
     __tablename__ = 'bibliography'
@@ -100,10 +117,10 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/admin')
-@login_required
-def admin():
-    return redirect(url_for('admin'))
+# @app.route('/admin')
+# @login_required
+# def admin():
+#     return redirect(url_for('admin'))
 
 
 @app.route('/bibliography')
@@ -111,7 +128,7 @@ def admin():
 def records():
     page = request.args.get('page', 1, type=int)
     records = Bibliography.query.filter_by(user_id=current_user.id).paginate(page=page, per_page=10)
-    return render_template('bibliography.html', records=records)
+    return render_template('bibliography1.html', records=records)
 
 
 
@@ -184,6 +201,70 @@ def account():
         form.email.data = current_user.email
     image = url_for('static', filename='images/' + current_user.image)
     return render_template('account.html', title='Account', form=form, image=image)
+
+
+
+
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USERNAME'] = MAIL_USERNAME
+# app.config['MAIL_PASSWORD'] = MAIL_PASSWORD
+mail = Mail(app)
+
+
+def send_reset_email(user):
+    token = user.get_reset_token()
+
+    # msg = Message('Slaptažodžio atnaujinimo užklausa',
+    #               sender='o.valioniene.testinis@gmail.com',
+    #               recipients=[user.email])
+    # msg.body = f'''Norėdami atnaujinti slaptažodį, paspauskite nuorodą:
+    # {url_for('reset_token', token=token, _external=True)}
+    # Jei jūs nedarėte šios užklausos, nieko nedarykite ir slaptažodis nebus pakeistas.
+    # '''
+    # mail.send(msg)
+
+
+
+@app.route("/reset_password", methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = forms.QueryUpdateForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        send_reset_email(user)
+        flash('Password reset instructions sent to your email', 'info')
+        return redirect(url_for('login'))
+    return render_template('reset_request.html', title='Reset Password', form=form)
+
+
+@app.route("/reset_password/<token>", methods=['GET', 'POST'])
+def reset_token(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('The request is invalid or has expired', 'warning')
+        return redirect(url_for('reset_request'))
+    form = forms.PasswordUpdateForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user.password = hashed_password
+        db.session.commit()
+        flash('Your password has been updated! Can login', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_token.html', title='Reset Password', form=form)
+
+
+
+
+
+
+
+
 
 db.create_all()
 

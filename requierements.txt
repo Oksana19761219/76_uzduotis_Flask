@@ -1,8 +1,10 @@
 flask
+flask_login
+flask_mail
 flask_sqlalchemy
 flask_bcrypt
 flask_admin
-flask_login
-sqlalchemy
-pillow
 flask_wtf
+wtforms
+itsdangerous==1.1.0
+pillow

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, BooleanField, StringField, PasswordField, IntegerField
+from wtforms import SubmitField, BooleanField, StringField, PasswordField, IntegerField, EmailField
 from wtforms.validators import DataRequired, ValidationError, EqualTo
 from flask_wtf.file import FileField, FileAllowed
 import app
@@ -54,3 +54,14 @@ class AccountUpdateForm(FlaskForm):
             user = app.User.query.filter_by(email=email.data).first()
             if user:
                 raise ValidationError('This email has been used, choose another')
+
+
+class QueryUpdateForm(FlaskForm):
+    email = EmailField('email', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+
+class PasswordUpdateForm(FlaskForm):
+    password = PasswordField('password', validators=[DataRequired()])
+    confirmed_password = PasswordField('repeat password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('change password')
