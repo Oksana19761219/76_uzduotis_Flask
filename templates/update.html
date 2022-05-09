@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form method="post" action="#">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.author.label(class="form-control-label") }}
+        {{ form.author(class="form-control", value=record.author) }}
+    </div>
+
+        <div class="form-group">
+        {{ form.title.label(class="form-control-label") }}
+        {{ form.title(class="form-control", value=record.title) }}
+    </div>
+
+        <div class="form-group">
+        {{ form.year.label(class="form-control-label") }}
+        {{ form.year(class="form-control", value=record.year) }}
+    </div>
+
+     <br>
+    {{ form.submit }}
+</form>
+{% endblock %}
