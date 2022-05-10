@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+    {% if records %}
+        {% for record in records %}
+            <hr>
+            <p>author: {{record.author}}</p>
+            <p>title: {{record.title}}</p>
+            <p>year: {{record.year}}</p>
+
+        {% endfor %}
+        <hr>
+
+
+    {% endif %}
+
+{% endblock %}
